@@ -1,6 +1,6 @@
 #include <iostream>
 #include <fstream>
-#include <typeinfo>
+#include <algorithm>
 #include "buffer.hpp"
 
 using namespace std;
@@ -38,12 +38,12 @@ int main() {
 	cout << d.str << endl;
 	
 	cout << "Challenge 5" << endl;
-	b = bytebuf("Burning 'em, if you ain't quick and nimble\nI go crazy when I hear a cymbal", bytebuf::ASCII);
-	enc = b % bytebuf("FOUR", bytebuf::ASCII);
+	b = bytebuf("Burning 'em, if you ain't quick and nimble@I go crazy when I hear a cymbal", bytebuf::ASCII);
+	enc = b % bytebuf("ICE", bytebuf::ASCII);
 	cout << enc.toHex() << endl;
 	
 	cout << "Challenge 6" << endl;
-	b = bytebuf("this is a test", bytebuf::ASCII);
+	/*b = bytebuf("this is a test", bytebuf::ASCII);
 	cout << b - bytebuf("wokka wokka!!!", bytebuf::ASCII) << endl;
 	
 	b = bytebuf("12345678abcdefgh", bytebuf::ASCII);
@@ -63,16 +63,63 @@ int main() {
 	tmp = bytebuf(b.nsample(8,1,4));
 	cout << string(tmp) << endl;
 	tmp = bytebuf(b.nsample(12,1,4));
-	cout << string(tmp) << endl;
+	cout << string(tmp) << endl;*/
 	
-	for (const int &ks : {2,3,4,5,6,7}) {
-		auto chunk1 = enc.nsample(0,ks,ks);
-		auto chunk2 = enc.nsample(ks,ks,ks);
-		cout << "chunk lengths: " << chunk1.size() << ", " << chunk2.size() << endl;
-		int hdist = bytebuf(chunk1) - bytebuf(chunk2);
-		float nhdist = (float)hdist / (float) ks;
-		cout << "For key size " << ks << ", normalized dist = " << nhdist << endl;
+	fp.open("6.txt", ios::in | ios::binary);
+	string res;
+	while(getline(fp,line)) res+=line; //The problem appears to be in reading the file?
+	
+	enc = bytebuf(res, bytebuf::BASE64);
+	//b = bytebuf("Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat. Duis aute irure dolor in reprehenderit in voluptate velit esse cillum dolore eu fugiat nulla pariatur. Excepteur sint occaecat cupidatat non proident, sunt in culpa qui officia deserunt mollit anim id est laborum.", bytebuf::ASCII);
+	//enc = b % bytebuf("MercuryVenusEarth", bytebuf::ASCII);
+	
+	fp.close();
+	
+	vector<pair<int, float> > vf;
+	
+	//I'm getting the right key size
+	for (int ks = 2; ks <= 40 ; ks++) {
+		auto chunk1 = bytebuf(enc.nsample(0,1,ks));
+		//cout << bytebuf(chunk1).toHex() << endl;
+		auto chunk2 = bytebuf(enc.nsample(ks,1,ks));
+		//cout << bytebuf(chunk2).toHex() << endl;
+		auto chunk3 = bytebuf(enc.nsample(2*ks,1,ks));
+		//cout << bytebuf(chunk3).toHex() << endl;
+		auto chunk4 = bytebuf(enc.nsample(3*ks,1,ks));
+		//cout << bytebuf(chunk4).toHex() << endl;
+		auto chunk5 = bytebuf(enc.nsample(4*ks,1,ks));
+		//cout << bytebuf(chunk5).toHex() << endl;
+		auto chunk6 = bytebuf(enc.nsample(5*ks,1,ks));
+		//cout << bytebuf(chunk6).toHex() << endl;
+		int hdist = (chunk1 - chunk2) + (chunk1 - chunk3) + (chunk1 - chunk4) + (chunk1 - chunk5) + (chunk1 - chunk6)
+			+ (chunk2 - chunk3) + (chunk2 - chunk4) + (chunk2 - chunk5) + (chunk2 - chunk6)
+			+ (chunk3 - chunk4) + (chunk3 - chunk5) + (chunk3 - chunk6)
+			+ (chunk4 - chunk5) + (chunk4 - chunk6)
+			+ (chunk5 - chunk6);
+		float nhdist = (float)(hdist) / (15.0*(float) ks);
+		vf.push_back({ks, nhdist});
+		//cout << "key size " << ks << ", ndist " << nhdist << endl;
 	}
 	
+	nth_element(vf.begin(), vf.begin(), vf.end(), [](pair<int, float> a, pair<int, float> b) {return get<1>(a) < get<1>(b);});
+	
+	vector<string> vs;
+	//We'll use the best key size
+	int ks = get<0>(vf[0]); //UGLY, but the lambda function in the sort makes it better than C
+	for (int j = 0; j < ks; j++) {
+		vs.push_back(bytebuf(enc.sample(j, ks)).likelyDecode().str);
+	}
+		
+	string ret;
+	for (unsigned i = 0; i < vs[0].size(); i++) {
+		for (unsigned j = 0; j < vs.size(); j++) {
+			try {
+				ret.push_back(vs[j].at(i));
+			} catch (exception &e) {
+				//do nothing
+			}
+		}
+	}
+	cout << ret << endl;
 	return 0;
 }

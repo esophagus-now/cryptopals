@@ -74,6 +74,6 @@ class bytebuf {
 	slice nsample(int begin, int step, int n); //Like slice, but limited to n
 };
 
-extern char const * const b64_table;
+extern std::string const b64_table;
 
 #endif

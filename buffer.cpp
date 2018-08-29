@@ -6,6 +6,7 @@
 #include <exception>
 #include <stdexcept>
 #include <unordered_map>
+#include <ctype.h>
 #include "buffer.hpp"
 
 using namespace std;
@@ -14,7 +15,7 @@ bool scx_dec::operator>(const scx_dec &other) {
 	return score >= other.score;
 }
 
-char const * const b64_table = 
+string const b64_table = 
 	"ABCDEFGHIJKLMNOPQRSTUVWXYZ"
 	"abcdefghijklmnopqrstuvwxyz"
 	"0123456789+/";
@@ -28,7 +29,7 @@ bytebuf::bytebuf(string str, int mode) {
 		int len = str.length();
 		int newsz = (len>>1) + (len&1); //ceil(len/2)
 		data.clear();
-		data.reserve(newsz);
+		data.reserve(newsz + 1); //Plus one for safety, I guess
 		//I know I'm doing this too much like a C programmer, which is why
 		//reinterpret_cast had to be invoked here. It looks bad...
 		//But for Christ's sake! Why should static_cast complain if I'm
@@ -55,7 +56,70 @@ bytebuf::bytebuf(string str, int mode) {
 			data.push_back(hi + lo); //Should never trigger a resize
 		}
 	} else if (mode == BASE64) {
-		throw new runtime_error("bytebuf init from b64 string not implemented yet");
+		//NOTE: There is a HUGE difference between "left-aligned"
+		//and "right-aligned" base64. This code deals with left-aligned,
+		//even though that is not the most obvious solution. For some
+		//reason, right-aligned makes more sense to me. Anyway, I should
+		//make the alignment an option in the future. For now this works.
+		
+		//throw new runtime_error("bytebuf init from b64 string not implemented yet");
+		//Four b64 bytes make three bytes
+		//--000000 --111111 --222222 --333333
+		//--000000 --001111 --111122 --222222
+		
+		//I'm just gonna use find(). Performance is really not critical here
+		if (str.back() == '=') str.pop_back();
+				
+		unsigned len = str.size();
+		vector<unsigned char> v;
+		v.reserve(len);
+		
+		int newsz = 3 * (len >> 2) + (len % 3); //ceil(3*len/4)
+		data.reserve(newsz + 1); //Plus one for safety, I guess
+		
+		for(char &c : str) {
+			//Convert the b64 chars to their 6 bit value.
+			v.push_back(static_cast<unsigned char>(b64_table.find(c)));
+		}
+		
+		unsigned i = 0;		
+		for (; i < len - (len % 4); i += 4) {
+			//--000000 --111111 --222222 --333333
+			//--000000 --001111 --111122 --222222
+			data.push_back((v[i]<<2) + (v[i+1]>>4));
+			data.push_back((v[i+1]<<4) + (v[i+2]>>2));
+			data.push_back((v[i+2]<<6) + v[i+3]);
+		}
+		switch (len % 4) {
+			case 3:
+				//The problem is here! But what is it?
+				//--000000 --111111 --222222
+				//--000000 --001111 --1111--
+				/*{
+					stringstream s;
+					s << setfill('0') << setbase(16);
+					s << setw(2) << +v[0];
+					s << setw(2) << +v[1];
+					s << setw(2) << +v[2];
+					cout << s.str() << endl;
+				}*/
+				data.push_back((v[i]<<2) + (v[i+1]>>4));
+				data.push_back((v[i+1]<<4) + (v[i+2]>>2));
+				break;
+			case 2:
+				//--000000 --111111
+				//--000000 --001111
+				data.push_back((v[i]<<2) + (v[i+1]>>4));
+				//data.push_back((v[i]<<6) + v[i+1]);
+				break;
+			case 1:
+				//--000000
+				//--000000
+				data.push_back(v[i]<<2);//?
+				break;
+			default:
+				break;
+		}
 	}
 }
 
@@ -175,7 +239,7 @@ bytebuf::operator std::string() const {
 }
 
 int bytebuf::englishScore() const {
-	static const unordered_map<char, int> scores= {
+	/*static const unordered_map<char, int> scores= {
 		{'E', 13},
 		{'e', 13},
 		{'T', 12},
@@ -201,12 +265,41 @@ int bytebuf::englishScore() const {
 		{'l', 2},
 		{'U', 1},
 		{'u', 1}
+	};*/
+	static const unordered_map<char, int> scores= {
+		{'E', 1},
+		{'e', 2},
+		{'T', 1},
+		{'t', 2},
+		{'A', 1},
+		{'a', 2},
+		{'O', 1},
+		{'o', 2},
+		{'I', 1},
+		{'i', 2},
+		{'N', 1},
+		{'n', 2},
+		{' ', 2},
+		{'S', 1},
+		{'s', 2},
+		{'H', 1},
+		{'h', 2},
+		{'R', 1},
+		{'r', 2},
+		{'D', 1},
+		{'d', 2},
+		{'L', 1},
+		{'l', 2},
+		{'U', 1},
+		{'u', 2}
 	};
 	
 	int score = 0;
 	for(auto c: data) {
 		auto ptr = scores.find(c);
 		if (ptr != scores.end()) score += ptr->second;
+		if (!isprint(c)) score-=1;
+		if (isalpha(c)) score++;
 	}
 	
 	return score;

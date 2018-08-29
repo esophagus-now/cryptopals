@@ -41,7 +41,7 @@ slice::operator bytebuf() const {
 }
 
 slice bytebuf::sample(int b, int s) {
-	//IT owuld be nice if I could chance data.end() to the corresponding unsigned char*
+	//It would be nice if I could change data.end() to the corresponding unsigned char*
 	return slice(data.data() + b, s, data.data() + data.size()); //uuuuuuuuugly
 }
 
