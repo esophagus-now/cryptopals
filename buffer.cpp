@@ -3,7 +3,9 @@
 #include <iomanip>
 #include <sstream>
 #include <cstring>
+#include <exception>
 #include <stdexcept>
+#include <unordered_map>
 #include "buffer.hpp"
 
 using namespace std;
@@ -14,9 +16,13 @@ char const * const b64_table =
 	"0123456789+/";
 
 bytebuf::bytebuf() {} //Nothing to do; std::vector() automatically called
-bytebuf::bytebuf(string hexstr) {
+bytebuf::bytebuf(string str, int mode) {
+	if (mode == ASCII) {
+		data = vector<unsigned char>(str.begin(), str.end());
+		return;
+	}
 	//This doesn't need to be efficient, since it happens very rarely
-	int len = hexstr.length();
+	int len = str.length();
 	int newsz = (len>>1) + (len&1); //ceil(len/2)
 	data.clear();
 	data.reserve(newsz);
@@ -27,7 +33,7 @@ bytebuf::bytebuf(string hexstr) {
 	int i = 0;
 	if (len&1) {
 		//Special case if we have an odd number of nybbles
-		char lo = hexstr[0];
+		char lo = str[0];
 		if (lo > '9') lo += 9; //Tricky hack
 		lo &= 0xF;
 		data.push_back(lo);
@@ -35,11 +41,11 @@ bytebuf::bytebuf(string hexstr) {
 	}
 	
 	for (; i < len; i+=2) {
-		char hi = hexstr[i];
+		char hi = str[i];
 		if (hi > '9') hi += 9; //Tricky hack
 		hi <<= 4;
 		
-		char lo = hexstr[i+1];
+		char lo = str[i+1];
 		if (lo > '9') lo += 9; //Tricky hack
 		lo &= 0xF;
 		
@@ -73,19 +79,30 @@ bytebuf bytebuf::operator^(const unsigned char other) {
 	return b;
 }
 
+bytebuf bytebuf::operator% (const bytebuf &other) {
+	unsigned len = data.size();
+	unsigned otherlen = other.data.size();
+	bytebuf ret;
+	ret.data.reserve(len);
+	for (unsigned i = 0; i < len; i++) {
+		ret.data.push_back(data[i] ^ other.data[i%otherlen]);
+	}
+	return ret; //Hooray for RVO
+}
+
 //I'm not sure if RVO happens when you return stringstream.str(), but
 //performance really isn't critical in this function. It could take an
 //entire millisecond and it wouldn't matter, since it is so rarely called.
-string bytebuf::toHex() {
+string bytebuf::toHex() const {
 	stringstream s;
-	s << hex; //Output in hex
-	for(unsigned char &c: data) {
-		s << +c; //The unary plus is finally useful!
+	s << setfill('0') << hex; //Output in hex
+	for(auto &c: data) {
+		s << setw(2) << +c; //The unary plus is finally useful!
 	}
 	return s.str();
 }
 
-string bytebuf::toB64() {
+string bytebuf::toB64() const {
 	//Every three bytes represent four b64 characters. So, we have
 	//a special case for if len % 3 is 0, 1, or 2
 	
@@ -128,4 +145,42 @@ string bytebuf::toB64() {
 //Results in an unnecessary copy, but that's OK
 bytebuf::operator std::string() const {
 	return string(data.begin(), data.end());
+}
+
+int bytebuf::englishScore() const {
+	static const unordered_map<char, int> scores= {
+		{'E', 13},
+		{'e', 13},
+		{'T', 12},
+		{'t', 12},
+		{'A', 11},
+		{'a', 11},
+		{'O', 10},
+		{'o', 10},
+		{'I', 9},
+		{'i', 9},
+		{'N', 8},
+		{'n', 8},
+		{' ', 7},
+		{'S', 6},
+		{'s', 6},
+		{'H', 5},
+		{'h', 5},
+		{'R', 4},
+		{'r', 4},
+		{'D', 3},
+		{'d', 3},
+		{'L', 2},
+		{'l', 2},
+		{'U', 1},
+		{'u', 1}
+	};
+	
+	int score = 0;
+	for(auto c: data) {
+		auto ptr = scores.find(c);
+		if (ptr != scores.end()) score += ptr->second;
+	}
+	
+	return score;
 }
