@@ -5,6 +5,9 @@
 #include <vector>
 #include <string>
 
+//idea: move element-wise operators to bytebuf::slice, and get the 
+//operators in bytebuf to work on slices instead.
+
 //single-character XOR decode
 struct scx_dec {
 	std::string str;
@@ -39,6 +42,36 @@ class bytebuf {
 	int englishScore() const; //Score of how much this looks like English
 	
 	scx_dec likelyDecode() const; //Most likely single-character XOR decode
+	
+	class ranger {
+		unsigned char *p;
+		int step;
+
+		public:
+		ranger(unsigned char *p, int step) : p(p), step(step) {} //will this work?
+		unsigned char &operator*() const;
+		bool operator!=(const ranger &other) const; //Hack: checks if this iterator is less than other, as opposed to simply not equal
+		ranger &operator++();
+	};
+	
+	class slice {
+		unsigned char *start;
+		int step;
+		unsigned char *one_past_last;
+		
+		public:
+		slice(unsigned char *start, int step, unsigned char *one_past_last) : start(start), step(step), one_past_last(one_past_last) {}
+		ranger begin() const;
+		ranger end() const;
+		
+		unsigned size() const;
+
+		operator bytebuf() const;
+	};
+	
+	slice sample(int begin, int step); //"Sample" the buffer at regular intervals
+	
+	slice nsample(int begin, int step, int n); //Like slice, but limited to n
 };
 
 extern char const * const b64_table;

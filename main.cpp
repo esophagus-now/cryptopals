@@ -1,5 +1,6 @@
 #include <iostream>
 #include <fstream>
+#include <typeinfo>
 #include "buffer.hpp"
 
 using namespace std;
@@ -38,12 +39,40 @@ int main() {
 	
 	cout << "Challenge 5" << endl;
 	b = bytebuf("Burning 'em, if you ain't quick and nimble\nI go crazy when I hear a cymbal", bytebuf::ASCII);
-	b = b % bytebuf("ICE", bytebuf::ASCII);
-	cout << b.toHex() << endl;
+	enc = b % bytebuf("FOUR", bytebuf::ASCII);
+	cout << enc.toHex() << endl;
 	
 	cout << "Challenge 6" << endl;
 	b = bytebuf("this is a test", bytebuf::ASCII);
 	cout << b - bytebuf("wokka wokka!!!", bytebuf::ASCII) << endl;
+	
+	b = bytebuf("12345678abcdefgh", bytebuf::ASCII);
+	bytebuf tmp = bytebuf(b.sample(0,4));
+	cout << string(tmp) << endl;
+	tmp = bytebuf(b.sample(1,4));
+	cout << string(tmp) << endl;
+	tmp = bytebuf(b.sample(2,4));
+	cout << string(tmp) << endl;
+	tmp = bytebuf(b.sample(3,4));
+	cout << string(tmp) << endl;
+	
+	tmp = bytebuf(b.nsample(0,1,4));
+	cout << string(tmp) << endl;
+	tmp = bytebuf(b.nsample(4,1,4));
+	cout << string(tmp) << endl;
+	tmp = bytebuf(b.nsample(8,1,4));
+	cout << string(tmp) << endl;
+	tmp = bytebuf(b.nsample(12,1,4));
+	cout << string(tmp) << endl;
+	
+	for (const int &ks : {2,3,4,5,6,7}) {
+		auto chunk1 = enc.nsample(0,ks,ks);
+		auto chunk2 = enc.nsample(ks,ks,ks);
+		cout << "chunk lengths: " << chunk1.size() << ", " << chunk2.size() << endl;
+		int hdist = bytebuf(chunk1) - bytebuf(chunk2);
+		float nhdist = (float)hdist / (float) ks;
+		cout << "For key size " << ks << ", normalized dist = " << nhdist << endl;
+	}
 	
 	return 0;
 }
