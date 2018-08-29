@@ -10,6 +10,11 @@
 
 using namespace std;
 
+bool scx_dec::operator>(const scx_dec &other) {
+	return score >= other.score;
+}
+
+
 char const * const b64_table = 
 	"ABCDEFGHIJKLMNOPQRSTUVWXYZ"
 	"abcdefghijklmnopqrstuvwxyz"
@@ -19,43 +24,45 @@ bytebuf::bytebuf() {} //Nothing to do; std::vector() automatically called
 bytebuf::bytebuf(string str, int mode) {
 	if (mode == ASCII) {
 		data = vector<unsigned char>(str.begin(), str.end());
-		return;
-	}
-	//This doesn't need to be efficient, since it happens very rarely
-	int len = str.length();
-	int newsz = (len>>1) + (len&1); //ceil(len/2)
-	data.clear();
-	data.reserve(newsz);
-	//I know I'm doing this too much like a C programmer, which is why
-	//reinterpret_cast had to be invoked here. It looks bad...
-	//But for Christ's sake! Why should static_cast complain if I'm
-	//converting from const char * to const unsigned char *???
-	int i = 0;
-	if (len&1) {
-		//Special case if we have an odd number of nybbles
-		char lo = str[0];
-		if (lo > '9') lo += 9; //Tricky hack
-		lo &= 0xF;
-		data.push_back(lo);
-		i++;
-	}
-	
-	for (; i < len; i+=2) {
-		char hi = str[i];
-		if (hi > '9') hi += 9; //Tricky hack
-		hi <<= 4;
+	} else if (mode == HEX) {
+		//This doesn't need to be efficient, since it happens very rarely
+		int len = str.length();
+		int newsz = (len>>1) + (len&1); //ceil(len/2)
+		data.clear();
+		data.reserve(newsz);
+		//I know I'm doing this too much like a C programmer, which is why
+		//reinterpret_cast had to be invoked here. It looks bad...
+		//But for Christ's sake! Why should static_cast complain if I'm
+		//converting from const char * to const unsigned char *???
+		int i = 0;
+		if (len&1) {
+			//Special case if we have an odd number of nybbles
+			char lo = str[0];
+			if (lo > '9') lo += 9; //Tricky hack
+			lo &= 0xF;
+			data.push_back(lo);
+			i++;
+		}
 		
-		char lo = str[i+1];
-		if (lo > '9') lo += 9; //Tricky hack
-		lo &= 0xF;
-		
-		data.push_back(hi + lo); //Should never trigger a resize
+		for (; i < len; i+=2) {
+			char hi = str[i];
+			if (hi > '9') hi += 9; //Tricky hack
+			hi <<= 4;
+			
+			char lo = str[i+1];
+			if (lo > '9') lo += 9; //Tricky hack
+			lo &= 0xF;
+			
+			data.push_back(hi + lo); //Should never trigger a resize
+		}
+	} else if (mode == BASE64) {
+		throw new runtime_error("bytebuf init from b64 string not implemented yet");
 	}
 }
 
 bytebuf::~bytebuf() {} //Nothing to do; std::~vector() automatically called
 
-bytebuf bytebuf::operator^(const bytebuf &other) {
+bytebuf bytebuf::operator^(const bytebuf &other) const {
 	if (data.size() != other.data.size()) {
 		throw runtime_error("Data size mismatch in bytebuf::operator^");
 	}
@@ -70,7 +77,7 @@ bytebuf bytebuf::operator^(const bytebuf &other) {
 	return b; //RVO for the win
 }
 
-bytebuf bytebuf::operator^(const unsigned char other) {
+bytebuf bytebuf::operator^(const unsigned char other) const {
 	bytebuf b;
 	b.data.reserve(data.size());
 	
@@ -88,6 +95,27 @@ bytebuf bytebuf::operator% (const bytebuf &other) {
 		ret.data.push_back(data[i] ^ other.data[i%otherlen]);
 	}
 	return ret; //Hooray for RVO
+}
+
+//From Stanford bit-twiddling hacks. Very clever!
+static const int BitsSetTable256[256] = 
+{
+#   define B2(n) n,     n+1,     n+1,     n+2
+#   define B4(n) B2(n), B2(n+1), B2(n+1), B2(n+2)
+#   define B6(n) B4(n), B4(n+1), B4(n+1), B4(n+2)
+    B6(0), B6(1), B6(1), B6(2)
+};
+
+int bytebuf::operator- (const bytebuf &other) {
+	if (data.size() != other.data.size()) {
+		throw runtime_error("Length mismatch in bytebuf::operator-");
+	}
+	int sum = 0;
+	for (unsigned i = 0; i < data.size(); i++) {
+		sum += BitsSetTable256[data[i]^other.data[i]];
+	}
+	
+	return sum;
 }
 
 //I'm not sure if RVO happens when you return stringstream.str(), but
@@ -183,4 +211,21 @@ int bytebuf::englishScore() const {
 	}
 	
 	return score;
+}
+
+scx_dec bytebuf::likelyDecode() const {
+	unsigned char c = 0;
+	unsigned char bestc = 0;
+	int maxScore = englishScore();
+	do {
+		bytebuf tmp = (*this)^c;
+		int score = tmp.englishScore();
+		if (score > maxScore) {
+			maxScore = score;
+			bestc = c;
+		}
+	} while (++c);
+	
+	bytebuf tmp = (*this)^bestc;
+	return {.str = string(tmp),.score = maxScore,.key = bestc};
 }

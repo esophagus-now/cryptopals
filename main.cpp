@@ -17,45 +17,33 @@ int main() {
 	
 	cout << "Challenge 3" << endl;
 	bytebuf enc("1b37373331363f78151b7f2b783431333d78397828372d363c78373e783a393b3736", bytebuf::HEX);
-	string best = string(enc);
-	unsigned char c = 0;
-	int maxScore = enc.englishScore();
-	do {
-		bytebuf tmp = enc^c++;
-		int score = tmp.englishScore();
-		if (score > maxScore) {
-			maxScore = score;
-			best = string(tmp);
-		}
-	} while (c);
-	
-	cout << best << endl;
+	scx_dec d = enc.likelyDecode();
+	cout << d.str << endl;
 	
 	cout << "Challenge 4" << endl;
 	ifstream fp("4.txt", ios::in);
 	
 	string line;
-	maxScore = -1; //We can get away with this since scores are always positive
+	getline(fp, line);
+	d = bytebuf(line, bytebuf::HEX).likelyDecode();
 	while (getline(fp, line)) {
-		c = 0;
-		b = bytebuf(line, bytebuf::HEX);
-		do {
-			bytebuf tmp = b^c++;
-			int score = tmp.englishScore();
-			if (score > maxScore) {
-				maxScore = score;
-				best = string(tmp);
-			}
-		} while(c);
+		scx_dec tmp = bytebuf(line, bytebuf::HEX).likelyDecode();
+		if (tmp > d) {
+			d = tmp;
+		}
 	}
 	fp.close();
 	
-	cout << best << endl;
+	cout << d.str << endl;
 	
 	cout << "Challenge 5" << endl;
 	b = bytebuf("Burning 'em, if you ain't quick and nimble\nI go crazy when I hear a cymbal", bytebuf::ASCII);
 	b = b % bytebuf("ICE", bytebuf::ASCII);
 	cout << b.toHex() << endl;
+	
+	cout << "Challenge 6" << endl;
+	b = bytebuf("this is a test", bytebuf::ASCII);
+	cout << b - bytebuf("wokka wokka!!!", bytebuf::ASCII) << endl;
 	
 	return 0;
 }
