@@ -62,12 +62,10 @@ bytebuf::bytebuf(string str, int mode) {
 		//reason, right-aligned makes more sense to me. Anyway, I should
 		//make the alignment an option in the future. For now this works.
 		
-		//throw new runtime_error("bytebuf init from b64 string not implemented yet");
 		//Four b64 bytes make three bytes
 		//--000000 --111111 --222222 --333333
 		//--000000 --001111 --111122 --222222
 		
-		//I'm just gonna use find(). Performance is really not critical here
 		if (str.back() == '=') str.pop_back();
 				
 		unsigned len = str.size();
@@ -77,6 +75,7 @@ bytebuf::bytebuf(string str, int mode) {
 		int newsz = 3 * (len >> 2) + (len % 3); //ceil(3*len/4)
 		data.reserve(newsz + 1); //Plus one for safety, I guess
 		
+		//I'm just gonna use find(). Performance is really not critical here
 		for(char &c : str) {
 			//Convert the b64 chars to their 6 bit value.
 			v.push_back(static_cast<unsigned char>(b64_table.find(c)));
@@ -92,17 +91,8 @@ bytebuf::bytebuf(string str, int mode) {
 		}
 		switch (len % 4) {
 			case 3:
-				//The problem is here! But what is it?
 				//--000000 --111111 --222222
 				//--000000 --001111 --1111--
-				/*{
-					stringstream s;
-					s << setfill('0') << setbase(16);
-					s << setw(2) << +v[0];
-					s << setw(2) << +v[1];
-					s << setw(2) << +v[2];
-					cout << s.str() << endl;
-				}*/
 				data.push_back((v[i]<<2) + (v[i+1]>>4));
 				data.push_back((v[i+1]<<4) + (v[i+2]>>2));
 				break;
@@ -182,8 +172,7 @@ int bytebuf::operator- (const bytebuf &other) {
 }
 
 //I'm not sure if RVO happens when you return stringstream.str(), but
-//performance really isn't critical in this function. It could take an
-//entire millisecond and it wouldn't matter, since it is so rarely called.
+//performance really isn't critical in this function. 
 string bytebuf::toHex() const {
 	stringstream s;
 	s << setfill('0') << hex; //Output in hex
