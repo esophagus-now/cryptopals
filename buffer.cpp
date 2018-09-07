@@ -113,7 +113,11 @@ bytebuf::bytebuf(string str, int mode) {
 	}
 }
 
-bytebuf::~bytebuf() {} //Nothing to do; std::~vector() automatically called
+//bytebuf::~bytebuf() {} //Nothing to do; std::~vector() automatically called
+
+void bytebuf::resize(int len) {
+	data.resize(len);
+}
 
 bytebuf bytebuf::operator^(const bytebuf &other) const {
 	if (data.size() != other.data.size()) {
@@ -128,6 +132,21 @@ bytebuf bytebuf::operator^(const bytebuf &other) const {
 	}
 	
 	return b; //RVO for the win
+}
+
+//TODO: Add cbegin() and cend() so that I can make this paramater a const&
+bytebuf &bytebuf::operator^=(bytebuf &other) {
+	if (data.size() != other.data.size()) {
+		throw runtime_error("Data size mismatch in bytebuf::operator^");
+	}
+	
+	auto it_other = other.begin();
+	for (auto &a : data) {
+		a ^= *it_other;
+		++it_other;
+	}
+	
+	return *this;
 }
 
 bytebuf bytebuf::operator^(const unsigned char other) const {
@@ -309,4 +328,12 @@ scx_dec bytebuf::likelyDecode() const {
 	
 	bytebuf tmp = (*this)^bestc;
 	return {.str = string(tmp),.score = maxScore,.key = bestc};
+}
+
+unsigned char &bytebuf::operator[] (int index) {
+	return data[index];
+}
+
+bytebuf operator"" _hbb(const char *str, unsigned int len) {
+	return bytebuf(string(str, len), bytebuf::HEX);
 }

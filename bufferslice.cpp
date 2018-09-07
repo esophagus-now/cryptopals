@@ -50,3 +50,11 @@ slice bytebuf::nsample(int b, int s, int n) {
 	unsigned char *my_end = data.data() + b + s*n;
 	return slice(data.data() + b, s, my_end < real_end ? my_end : real_end);
 }
+
+ranger bytebuf::begin() {
+	return ranger(data.data(), 1);
+}
+
+ranger bytebuf::end() {
+	return ranger(data.data() + data.size(), 0);
+}

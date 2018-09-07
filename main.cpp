@@ -1,7 +1,9 @@
 #include <iostream>
 #include <fstream>
 #include <algorithm>
+#include <typeinfo>
 #include "buffer.hpp"
+#include "AES.hpp"
 
 using namespace std;
 
@@ -65,9 +67,9 @@ int main() {
 	tmp = bytebuf(b.nsample(12,1,4));
 	cout << string(tmp) << endl;*/
 	
-	fp.open("6.txt", ios::in | ios::binary);
+	fp.open("6.txt", ios::in);
 	string res;
-	while(getline(fp,line)) res+=line; //The problem appears to be in reading the file?
+	while(getline(fp,line)) res+=line;
 	
 	enc = bytebuf(res, bytebuf::BASE64);
 	//b = bytebuf("Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat. Duis aute irure dolor in reprehenderit in voluptate velit esse cillum dolore eu fugiat nulla pariatur. Excepteur sint occaecat cupidatat non proident, sunt in culpa qui officia deserunt mollit anim id est laborum.", bytebuf::ASCII);
@@ -121,5 +123,27 @@ int main() {
 		}
 	}
 	cout << ret << endl;
+	
+	cout << "Challenge 7" << endl;
+	fp.open("7.txt", ios::in);
+	
+	res.clear();
+	while(getline(fp,line)) res+=line;
+	fp.close();
+	
+	enc = bytebuf(res, bytebuf::BASE64);
+	auto key = bytebuf("YELLOW SUBMARINE", bytebuf::ASCII);
+	key = keyschedule(key);
+	//cout << key.toHex() << endl;
+	
+	//cout << keyschedule("2b7e151628aed2a6abf7158809cf4f3c"_hbb).toHex() << endl;
+	//cout << keyschedule("000102030405060708090a0b0c0d0e0f"_hbb).toHex() << endl;
+	
+	//bytebuf willitworkfirsttry("d1aa4f6578926542fbb6dd876cd20508", bytebuf::HEX); //Got this by encrypting "YELLOW SUBMARINE" with "YELLOW SUBMARINE"
+	//No, it didn't work on the first try.
+	//bytebuf debug = "69c4e0d86a7b0430d8cdb78070b4c55a"_hbb;
+	//key = keyschedule("000102030405060708090a0b0c0d0e0f"_hbb);
+	//cout << string(decrypt128(willitworkfirsttry, key)) << endl;
+	
 	return 0;
 }

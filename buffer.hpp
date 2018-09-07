@@ -26,9 +26,12 @@ class bytebuf {
 	
 	bytebuf();
 	bytebuf(std::string str, int mode);
-	~bytebuf();
+	//~bytebuf();
+	
+	void resize(int len);
 	
 	bytebuf operator^(const bytebuf &other) const;
+	bytebuf &operator^=(bytebuf &other);
 	bytebuf operator^(const unsigned char other) const;
 	
 	bytebuf operator% (const bytebuf &other); //Repeating-key XOR
@@ -43,7 +46,7 @@ class bytebuf {
 	
 	scx_dec likelyDecode() const; //Most likely single-character XOR decode
 	
-	class ranger {
+	class ranger { //I named this "ranger" before realizing it was a forward iterator
 		unsigned char *p;
 		int step;
 
@@ -70,10 +73,15 @@ class bytebuf {
 	};
 	
 	slice sample(int begin, int step); //"Sample" the buffer at regular intervals
-	
 	slice nsample(int begin, int step, int n); //Like slice, but limited to n
+	
+	ranger begin();
+	ranger end();
+	
+	unsigned char &operator[] (int index);
 };
 
 extern std::string const b64_table;
+bytebuf operator"" _hbb(const char *, unsigned int len);
 
 #endif
