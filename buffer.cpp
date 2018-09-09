@@ -158,6 +158,11 @@ bytebuf bytebuf::operator^(const unsigned char other) const {
 	return b;
 }
 
+bytebuf &bytebuf::operator+=(bytebuf &other) {
+	data.insert(data.end(), other.data.begin(), other.data.end());
+	return *this;
+}
+
 bytebuf bytebuf::operator% (const bytebuf &other) {
 	unsigned len = data.size();
 	unsigned otherlen = other.data.size();

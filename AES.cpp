@@ -3,6 +3,8 @@
 #include <iostream>
 
 using namespace std;
+using ranger = bytebuf::ranger;
+using slice = bytebuf::slice; //clean up code a little
 
 static const unsigned char rcon[][4] = {
 	{0x01, 0x00, 0x00, 0x00},
@@ -201,4 +203,19 @@ bytebuf decrypt128(const bytebuf &ctxt, bytebuf &keysched) {
 		ret[i] ^= keysched[i];
 	}
 	return ret;
+}
+
+bytebuf decrypt(bytebuf &enc, bytebuf &key) {
+	bytebuf ks = keyschedule(key);
+	int i = 0;
+	slice cur = enc.nsample(0,1,16);
+	bytebuf dec;
+	do {
+		bytebuf tmp = decrypt128(bytebuf(cur), ks); //My custom types cornered me into this very inefficient method...
+		dec += tmp;
+		i += 16;
+		cur = enc.nsample(i,1,16);
+	} while(cur.begin() != cur.end());
+	
+	return dec;
 }

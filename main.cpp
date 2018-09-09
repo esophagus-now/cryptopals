@@ -7,6 +7,10 @@
 
 using namespace std;
 
+extern void testfn(void);
+
+//TODO: Migrate to my rewritten bytes class
+
 int main() {
 	cout << "Challenge 1" << endl;
 	bytebuf b("49276d206b696c6c696e6720796f757220627261696e206c696b65206120706f69736f6e6f7573206d757368726f6f6d", bytebuf::HEX);
@@ -133,17 +137,29 @@ int main() {
 	
 	enc = bytebuf(res, bytebuf::BASE64);
 	auto key = bytebuf("YELLOW SUBMARINE", bytebuf::ASCII);
-	key = keyschedule(key);
+	cout << string(decrypt(enc, key)) << endl;
+	//There's some garbage at the end... but I guess that's okay
+	
 	//cout << key.toHex() << endl;
 	
 	//cout << keyschedule("2b7e151628aed2a6abf7158809cf4f3c"_hbb).toHex() << endl;
 	//cout << keyschedule("000102030405060708090a0b0c0d0e0f"_hbb).toHex() << endl;
 	
 	//bytebuf willitworkfirsttry("d1aa4f6578926542fbb6dd876cd20508", bytebuf::HEX); //Got this by encrypting "YELLOW SUBMARINE" with "YELLOW SUBMARINE"
-	//No, it didn't work on the first try.
+	//No, it didn't work on the first try. I had forgotten about column-major ordering, but that was all!
 	//bytebuf debug = "69c4e0d86a7b0430d8cdb78070b4c55a"_hbb;
 	//key = keyschedule("000102030405060708090a0b0c0d0e0f"_hbb);
 	//cout << string(decrypt128(willitworkfirsttry, key)) << endl;
 	
+	cout << "Challenge 8" << endl;
+	fp.open("8.txt", ios::in);
+	
+	vector<bytebuf> vb;
+	while(getline(fp,line)) vb.push_back(bytebuf(line, bytebuf::HEX));
+	fp.close();
+	//for (auto &b: vb)
+	//cout << string(decrypt(b,key)) << endl << endl;
+	
+	testfn();
 	return 0;
 }

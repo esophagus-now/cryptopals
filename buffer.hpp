@@ -34,6 +34,8 @@ class bytebuf {
 	bytebuf &operator^=(bytebuf &other);
 	bytebuf operator^(const unsigned char other) const;
 	
+	bytebuf &operator+=(bytebuf &other);
+	
 	bytebuf operator% (const bytebuf &other); //Repeating-key XOR
 	int operator- (const bytebuf &other); //Hamming distance
 	
