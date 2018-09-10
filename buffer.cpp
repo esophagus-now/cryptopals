@@ -11,10 +11,6 @@
 
 using namespace std;
 
-bool scx_dec::operator>(const scx_dec &other) {
-	return score >= other.score;
-}
-
 string const b64_table = 
 	"ABCDEFGHIJKLMNOPQRSTUVWXYZ"
 	"abcdefghijklmnopqrstuvwxyz"

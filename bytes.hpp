@@ -10,13 +10,11 @@
 #include <vector>
 #include <string>
 #include <sstream>
+#include "scx_dec.hpp"
 
 typedef unsigned char byte;
 
-std::string const b64_table = 
-	"ABCDEFGHIJKLMNOPQRSTUVWXYZ"
-	"abcdefghijklmnopqrstuvwxyz"
-	"0123456789+/";
+extern std::string const b64_table;
 
 class byteview;
 
@@ -37,6 +35,8 @@ class bytes {
 	MODE defaultmode = HEX;
 	
 	///Constructors, destructors, etc.
+	bytes(int newsize) : data(newsize) {}
+	
 	bytes(std::string str, MODE mode) {
 		defaultmode = mode;
 		if (mode == ASCII) {
@@ -91,7 +91,7 @@ class bytes {
 			//I'm just gonna use find(). Performance is really not critical here
 			for(char &c : str) {
 				//Convert the b64 chars to their 6 bit value.
-				v.push_back(static_cast<unsigned char>(b64_table.find(c)));
+				v.push_back(static_cast<byte>(b64_table.find(c)));
 			}
 			
 			unsigned i = 0;		
@@ -125,6 +125,8 @@ class bytes {
 			}
 		}
 	}
+	
+	bytes(byteview other);
 	
 	///Pretty-printing
 	//I'm not sure if RVO happens when you return stringstream.str(), but
@@ -183,6 +185,13 @@ class bytes {
 		return std::string(data.begin(), data.end());
 	}
 	
+	///misc
+	int size() {
+		return data.size();
+	}
+	
+	///Arithmetic operations
+	
 	///Iterators
 	it begin() {
 		return data.begin();
@@ -198,8 +207,11 @@ class bytes {
 		return data.cend();
 	}
 	
+	decltype(data)::value_type &operator[] (int n) {
+		return data[n];
+	}
+	
 	///Byteview stuff
-	operator byteview();
 	
 	byteview sample(int b, int s);
 	
@@ -224,12 +236,18 @@ class byteview {
 	
 	///Constructors, desctructors, etc.
 	byteview(bytes &other) : my_start(other.begin()), my_step(1), my_end(other.end()), defaultmode(other.defaultmode) {}
+	byteview(bytes &&other) : my_start(other.begin()), my_step(1), my_end(other.end()), defaultmode(other.defaultmode) {}
 	
 	byteview(it start, dt step, it end) : my_start(start), my_step(step), my_end(end) {}
 	
 	///"Arithmetic" related to the crypto challenges
 	//TODO: Should this be defined as member functions to byteview, or
 	//as STL-style free functions?
+	
+	///Misc
+	dt size() const {
+		return (my_end - my_start) / my_step;
+	}
 	
 	///Iterators
 	class byteview_iterator : public it {
@@ -270,11 +288,15 @@ class byteview {
 			return it::operator-(my_step * n);
 		}
 		
+		//Source of a very tricky bug: I forgot to include difference _between_ byteview_iterators
+		dt operator-(byteview_iterator other) {
+			//There must be a better way...
+			return (*static_cast<it*>(this) - *static_cast<it*>(&other)) / other.my_step;
+		}
+		
 		it::value_type &operator[](int n) {
 			return it::operator[](my_step*n);
 		}
-		
-		
 	};
 	
 	typedef byteview_iterator iterator; //Give outside code access to this typename
@@ -349,112 +371,7 @@ class byteview {
 	}	
 };
 
-///The following few functions had to be defined "outside" the class
-///in order to compile properly
-
-bytes::operator byteview() {
-	return byteview(*this);
-}
-
-//This is really finicky fencepost stuff
-byteview bytes::sample(int b, int s) {
-	//There's a helpful diagram in the nsample function
-	it my_begin = data.begin() + b;
-	it real_end = data.end();
-	it my_end;
-	if (s == 0) my_end = my_begin; //Not sure if this is worth including
-	dt tmp = real_end - my_begin;
-	if (tmp % s == 0) my_end = real_end;
-	else my_end = my_begin + s*(1+tmp/s);
-	return byteview(my_begin, s, my_end);
-}
-
-byteview bytes::nsample(int b, int s, int n) {
-	//We need this byteview's end iterator to line up with a multiple of
-	//of the step size past the beginning
-	//s = 3, E means where the end iterator should end up, $ is the vector's real end
-	
-	//Case 1: b + s*n > data.end() but less than data.end() + s [EASY CASE]
-	//n = 5
-	//0123456789012$xx
-	//b__^__^__^__^__E
-	
-	//Case 2: b + s*n >= data.end() + s
-	//n = 7
-	//01234567890123$xxxxxxx
-	//b__^__^__^__^__E__^__^
-	//In this case, E should be at b + ceil(size/n)
-	
-	//Case 3: b + s*n == data.end() but greater than data.end() - s [EASY CASE]
-	//n = 6
-	//0123456789012345$xx
-	//b__^__^__^__^__^__E
-	
-	//Case 4: b + s*n <= data.end() - s [EASY CASE]
-	//n = 4
-	//012345678901234$xx
-	//b__^__^__^__E
-	using it = bytes::it;
-	it my_begin = data.begin() + b;
-	it real_end = data.end();
-	it my_end = data.begin() + b + s*n;
-	while (my_end >= real_end + s) my_end -= s; //Could be more efficient if we used division
-	return byteview(my_begin, s, my_end < real_end ? my_end : real_end);
-}
-
-std::vector<byteview> bytes::inBlocks(int bsize) {
-	if (bsize == 0) {
-		return std::vector<byteview>();
-	}
-	int size = data.size();
-	int numFullBlocks = size/bsize;
-	int numBlocks = numFullBlocks + (size % bsize == 0 ? 0 : 1);
-	std::vector<byteview> ret;
-	ret.reserve(numBlocks);
-	
-	it curStart = data.begin();
-	int i;
-	for (i = 0; i < numFullBlocks; i++) {
-		ret.emplace_back(curStart, 1, curStart + bsize);
-		curStart += bsize;
-	}
-	
-	if (i < numBlocks) {
-		ret.emplace_back(curStart, 1, data.end());
-	}
-	
-	return ret;
-}
-
-std::ostream &operator<<(std::ostream &o, const bytes &other) {
-	switch (other.defaultmode) {
-		case bytes::HEX:
-			o << other.toHex();
-			break;
-		case bytes::ASCII:
-			o << std::string(other);
-			break;
-		case bytes::BASE64:
-			o << other.toB64();
-			break;
-	}
-	
-	return o;
-}
-
-std::ostream &operator<<(std::ostream &o, byteview &other) {
-	switch (other.defaultmode) {
-		case bytes::HEX:
-			o << other.toHex();
-			break;
-		case bytes::ASCII:
-			o << std::string(other);
-			break;
-		case bytes::BASE64:
-			o << other.toB64();
-			break;
-	}
-	return o;
-}
+std::ostream &operator<<(std::ostream &o, const bytes &other);
+std::ostream &operator<<(std::ostream &o, byteview &other);
 
 #endif

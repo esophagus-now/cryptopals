@@ -4,17 +4,10 @@
 #include <iterator>
 #include <vector>
 #include <string>
+#include "scx_dec.hpp"
 
 //idea: move element-wise operators to bytebuf::slice, and get the 
 //operators in bytebuf to work on slices instead.
-
-//single-character XOR decode
-struct scx_dec {
-	std::string str;
-	int score;
-	unsigned char key;
-	bool operator>(const scx_dec &other);
-};
 
 class bytebuf {
 	std::vector<unsigned char> data;
