@@ -4,7 +4,6 @@
 #include <typeinfo>
 #include <unordered_set>
 #include <string>
-#include "buffer.hpp"
 #include "bytes.hpp"
 #include "cryptopals.hpp"
 
@@ -37,7 +36,7 @@ int main() {
 	
 	
 	cout << "Challenge 4" << endl;
-	ifstream fp("4.txt", ios::in);
+	ifstream fp("txt/4.txt", ios::in);
 	
 	string line;
 	/*getline(fp, line);
@@ -60,7 +59,7 @@ int main() {
 	
 	cout << "Challenge 6" << endl;
 	
-	fp.open("6.txt", ios::in);
+	fp.open("txt/6.txt", ios::in);
 	string res;
 	while(getline(fp,line)) res+=line;
 	
@@ -111,7 +110,7 @@ int main() {
 	
 	
 	cout << "Challenge 7" << endl;
-	fp.open("7.txt", ios::in);
+	fp.open("txt/7.txt", ios::in);
 	
 	res.clear();
 	while(getline(fp,line)) res+=line;
@@ -124,7 +123,7 @@ int main() {
 	cout << enc << endl;
 	
 	cout << "Challenge 8" << endl;
-	fp.open("8.txt", ios::in);
+	fp.open("txt/8.txt", ios::in);
 	
 	vector<bytes> vb;
 	while(getline(fp,line)) vb.push_back(bytes(line, bytes::HEX));

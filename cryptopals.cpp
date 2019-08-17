@@ -5,7 +5,7 @@
 
 using namespace std;
 
-#include "tables.txt"
+#include "txt/tables.txt"
 
 bytes operator^(byteview a, byteview b) {
 	if (a.size() != b.size()) {
