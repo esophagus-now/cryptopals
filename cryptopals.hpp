@@ -18,4 +18,5 @@ scx_dec likelyDecode(byteview other);
 
 void decrypt(bytes &enc, bytes &key);
 
+void cbc_decrypt(bytes &enc, bytes &key, bytes &iv);
 #endif

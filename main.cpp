@@ -142,5 +142,21 @@ int main() {
 		}
 	}
 	
+	cout << "Challenge 10" << endl;
+	fp.open("txt/10.txt", ios::in);
+	
+	res.clear();
+	while(getline(fp,line)) res+=line;
+	fp.close();
+	
+	enc = bytes(res, bytes::BASE64); 
+	enc.defaultmode = bytes::ASCII;
+	key = bytes("YELLOW SUBMARINE", bytes::ASCII);
+	
+	bytes iv(16); //IV is zero, so we can leave it like this
+	cbc_decrypt(enc, key, iv);
+	
+	cout << string(enc) << endl;
+	
 	return 0;
 }

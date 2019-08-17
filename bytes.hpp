@@ -190,6 +190,10 @@ class bytes {
 		return data.size();
 	}
 	
+	void append(bytes &other) {
+		data.insert(data.end(), other.data.begin(), other.data.end());
+	}
+	
 	///Arithmetic operations
 	
 	///Iterators

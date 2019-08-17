@@ -9,7 +9,12 @@ using namespace std;
 
 bytes operator^(byteview a, byteview b) {
 	if (a.size() != b.size()) {
-		throw std::runtime_error("Data size mismatch in bytes operator^(byteview a, byteview b)");
+		string msg = "Data size mismatch in bytes operator^(";
+		msg += to_string(a.size());
+		msg += ", ";
+		msg += to_string(b.size());
+		msg += ")";
+		throw std::runtime_error(msg);
 	}
 	bytes ret(a.size());
 	for (int i = 0; i < ret.size(); i++) {
@@ -294,4 +299,13 @@ void decrypt(bytes &enc, bytes &key) {
 	}
 	
 	return;
+}
+
+void cbc_decrypt(bytes &enc, bytes &key, bytes &iv) {
+	auto tmp = bytes(enc.nsample(0, 1, enc.size()-16));
+	iv.append(tmp); //Copy ciphertext after IV
+	
+	decrypt(enc, key);
+	
+	enc = enc ^ iv;
 }
