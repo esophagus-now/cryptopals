@@ -4,6 +4,11 @@
 
 using namespace std;
 
+string const b64_table = 
+	"ABCDEFGHIJKLMNOPQRSTUVWXYZ"
+	"abcdefghijklmnopqrstuvwxyz"
+	"0123456789+/";
+
 ///The following few functions had to be defined "outside" the class
 ///in order to compile properly
 
