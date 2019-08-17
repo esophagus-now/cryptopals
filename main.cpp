@@ -2,6 +2,8 @@
 #include <fstream>
 #include <algorithm>
 #include <typeinfo>
+#include <unordered_set>
+#include <string>
 #include "buffer.hpp"
 #include "bytes.hpp"
 #include "cryptopals.hpp"
@@ -122,15 +124,25 @@ int main() {
 	decrypt(enc, key);
 	cout << enc << endl;
 	
-	/*
 	cout << "Challenge 8" << endl;
 	fp.open("8.txt", ios::in);
 	
-	vector<bytebuf> vb;
-	while(getline(fp,line)) vb.push_back(bytebuf(line, bytebuf::HEX));
+	vector<bytes> vb;
+	while(getline(fp,line)) vb.push_back(bytes(line, bytes::HEX));
 	fp.close();
-	//for (auto &b: vb)
-	//cout << string(decrypt(b,key)) << endl << endl;
-	*/
+	
+	for (auto i: vb) {
+		unordered_set<string> seen;
+		for (auto j: i.inBlocks(16)) {
+			bool inserted;
+			tie(ignore, inserted) = seen.insert(j);
+			if (!inserted) /*meaning it is a duplicate*/ {
+				cout << "This was likely encoded with ECB:" << endl;
+				cout << i << endl;
+				break;
+			}
+		}
+	}
+	
 	return 0;
 }
