@@ -1,5 +1,9 @@
 #include <stdexcept>
 #include <unordered_map>
+#include <iostream>
+#include "conversions.hpp"
+#include "bytevector.hpp"
+#include "byteview.hpp"
 #include "cryptopals.hpp"
 #include "scx_dec.hpp"
 
@@ -17,7 +21,7 @@ bytes operator^(byteview a, byteview b) {
 		throw std::runtime_error(msg);
 	}
 	bytes ret(a.size());
-	for (int i = 0; i < ret.size(); i++) {
+	for (int i = 0; i < int(ret.size()); i++) {
 		ret[i] = a[i] ^ b[i];
 	}
 	
@@ -137,7 +141,7 @@ int englishScore(byteview other) {
 scx_dec likelyDecode(byteview other) {
 	byte c = 0;
 	byte bestc = 0;
-	bytes bestBytes(other);
+	bytes bestBytes = to_bytes(other);
 	int maxScore = englishScore(other);
 	do {
 		bytes tmp = other^c;
@@ -148,7 +152,7 @@ scx_dec likelyDecode(byteview other) {
 			bestBytes = move(tmp);
 		}
 	} while (++c);
-	return {.str = string(bestBytes),.score = maxScore,.key = bestc};
+	return {.str = to_string(bestBytes),.score = maxScore,.key = bestc};
 }
 
 
@@ -289,7 +293,7 @@ static void decrypt128(byteview ctxt, bytes &keysched) {
 
 void decrypt(bytes &enc, bytes &key) {
 	bytes ks = keyschedule(key);
-	auto blocks = enc.inBlocks(16);
+	auto blocks = inBlocks(enc, 16);
 	
 	for (auto &b : blocks) {
 		if (b.size() != 16) {
@@ -302,8 +306,8 @@ void decrypt(bytes &enc, bytes &key) {
 }
 
 void cbc_decrypt(bytes &enc, bytes &key, bytes &iv) {
-	auto tmp = bytes(enc.nsample(0, 1, enc.size()-16));
-	iv.append(tmp); //Copy ciphertext after IV
+	auto tmp = to_bytes(nsample(enc, 0, 1, enc.size()-16));
+	iv.insert(iv.end(), tmp.begin(), tmp.end()); //Copy ciphertext after IV
 	
 	decrypt(enc, key);
 	
