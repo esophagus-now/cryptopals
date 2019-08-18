@@ -163,7 +163,7 @@ int main() {
 	
 	cout << to_string(enc) << endl;
 	
-	cout << "Test of AES encryptor" << endl;
+	cout << "Challenge 11" << endl;
 	auto testdata = to_bytes(
 		"YELLOW SUBMARINE"
 		"YELLOW SUBMARINE"
@@ -180,14 +180,21 @@ int main() {
 	cbc_encrypt(testdata, key, iv);
 	cbc_decrypt(testdata, key, iv);
 	
-	cout << to_string(testdata) << endl;
-	
-	cout << "Test of random encryptor" << endl;
-	cout << "Original:" << endl;
-	cout << to_hex(testdata) << endl;
 	
 	bytes mystery = mystery_encryptor_11(testdata);
-	cout << "Modified:" << endl;
-	cout << to_hex(mystery) << endl;
+	
+	unordered_set<string> seen;
+	for (auto j: inBlocks(mystery, 16)) {
+		bool inserted;
+		tie(ignore, inserted) = seen.insert(j);
+		if (!inserted) /*meaning it is a duplicate*/ {
+			cout << "This was likely encoded with ECB!" << endl;
+			break;
+		}
+	}
+	
+	cout << "Challenge 12" << endl;
+	byte_at_a_time_simple();
+
 	return 0;
 }

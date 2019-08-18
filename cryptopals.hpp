@@ -26,4 +26,9 @@ void encrypt(bytes &enc, bytes &key);
 void cbc_encrypt(bytes &enc, bytes &key, bytes &iv);
 
 bytes mystery_encryptor_11(bytes &enc);
+
+//Function we are attacking in challenge 12
+bytes app_and_enc_12(bytes attack_str);
+
+void byte_at_a_time_simple();
 #endif

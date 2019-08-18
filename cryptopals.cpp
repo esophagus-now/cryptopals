@@ -2,6 +2,8 @@
 #include <unordered_map>
 #include <iostream>
 #include <cstdlib>
+#include <unordered_set>
+#include <map>
 #include "conversions.hpp"
 #include "bytevector.hpp"
 #include "byteview.hpp"
@@ -484,4 +486,101 @@ bytes mystery_encryptor_11(bytes &enc) {
 	}
 	
 	return ret;
+}
+
+//Function we are attacking in challenge 12
+bytes app_and_enc_12(bytes attack_str) {
+	static auto unk_str = to_bytes(
+		"Um9sbGluJyBpbiBteSA1LjAKV2l0aCBteSByYWctdG9wIGRvd24gc28gbXkg"
+		"aGFpciBjYW4gYmxvdwpUaGUgZ2lybGllcyBvbiBzdGFuZGJ5IHdhdmluZyBq"
+		"dXN0IHRvIHNheSBoaQpEaWQgeW91IHN0b3A/IE5vLCBJIGp1c3QgZHJvdmUg"
+		"YnkK", bvec::BASE64);
+	static auto key = mk_rand_bytes(16);
+	
+	bytes to_enc = attack_str;
+	add_to(to_enc, unk_str);
+	pad_to_mult(to_enc, 16);
+	
+	encrypt(to_enc, key);
+	
+	return to_enc;
+}
+
+map<bytes, byte> build_dict(bytes filler, int bsz) {
+	map<bytes, byte> dict;
+	for (int i = 0; i < 1<<8; i++) {
+		unsigned char test_byte = i & 0xFF;
+		filler.back() = test_byte;
+		bytes response = app_and_enc_12(filler);
+		bytes key(response.begin(), response.begin() + bsz);
+		dict[key] = test_byte;
+	}
+	
+	return dict;
+}
+
+void byte_at_a_time_simple() {	
+	bytes att_str = to_bytes("A", bvec::ASCII);
+	bytes ciphertxt = app_and_enc_12(att_str);
+	bytes last = bytes(ciphertxt.begin(), ciphertxt.begin() + 1);
+	
+	int bsz;
+	
+	for (int i = 2; i < 24; i++) {
+		add_to(att_str, to_bytes("A", bvec::ASCII));
+		bytes ciphertxt = app_and_enc_12(att_str);
+		//cout << to_hex(last) << endl;
+		//cout << to_hex(bytes(ciphertxt.begin(), ciphertxt.begin() + i)) << endl;
+		if (equal(last.begin(), last.end(), ciphertxt.begin())) {
+			cout << "Block size is " << i - 1 << endl;
+			bsz = i - 1;
+			break;
+		}
+		last = bytes(ciphertxt.begin(), ciphertxt.begin() + i);
+	}
+	
+	att_str = bytes(3*bsz, 'A');
+	bytes response = app_and_enc_12(att_str);
+	
+	unordered_set<string> seen;
+	for (auto j: inBlocks(response, 16)) {
+		bool inserted;
+		tie(ignore, inserted) = seen.insert(j);
+		if (!inserted) /*meaning it is a duplicate*/ {
+			cout << "This was likely encoded with ECB!" << endl;
+			break;
+		}
+	}
+	
+	bytes filler = bytes(bsz, 'B');
+	int block_count = 0;
+	while(1) {
+		att_str = bytes(bsz, 'B');
+		for (int i = bsz - 1; i >= 0; i--) {
+			att_str.pop_back();
+			//cout << "Attack string = " << to_string(att_str) << endl;
+			//cout << "Dict filler = " << to_string(filler) << endl;
+			//Build dictionary
+			auto dict = build_dict(filler, bsz);
+			//Decode next byte
+			response = app_and_enc_12(att_str);
+			bytes key(response.begin() + bsz*block_count, response.begin() + bsz*block_count + bsz);
+			auto it_to_el = dict.find(key);
+			if (it_to_el == dict.end()) {
+				cout << "Not found!" << endl;
+				goto done;
+			}
+			byte elem = (*it_to_el).second;
+			if (elem == 0) goto done;
+			cout << char(elem);
+			
+			filler.back() = elem;
+			filler = bytes(filler.begin()+1, filler.end());
+			filler.emplace_back();
+		}
+		block_count++;
+	}
+	done:
+	
+	cout << endl;
 }
