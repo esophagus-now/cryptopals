@@ -4,6 +4,8 @@
 #include <typeinfo>
 #include <unordered_set>
 #include <string>
+#include <cstdlib>
+#include <ctime>
 #include "bytevector.hpp"
 #include "cryptopals.hpp"
 #include "conversions.hpp"
@@ -18,6 +20,10 @@ extern void testfn(void);
 //TODO: Migrate to my rewritten bytes class
 
 int main() {
+	
+	//Seed random number generatio
+	srand(time(NULL));
+	
 	cout << "Challenge 1" << endl;
 	bytes b = to_bytes("49276d206b696c6c696e6720796f757220627261696e206c696b65206120706f69736f6e6f7573206d757368726f6f6d", bvec::HEX);
 	cout << to_hex(b) << endl;
@@ -157,7 +163,7 @@ int main() {
 	
 	cout << to_string(enc) << endl;
 	
-	cout << "Test of AES encrypter" << endl;
+	cout << "Test of AES encryptor" << endl;
 	auto testdata = to_bytes(
 		"YELLOW SUBMARINE"
 		"YELLOW SUBMARINE"
@@ -171,10 +177,17 @@ int main() {
 	);
 	
 	key = to_bytes("SOUS-MARIN JAUNE", bvec::ASCII);
-	encrypt(testdata, key);
-	decrypt(testdata, key);
+	cbc_encrypt(testdata, key, iv);
+	cbc_decrypt(testdata, key, iv);
 	
 	cout << to_string(testdata) << endl;
 	
+	cout << "Test of random encryptor" << endl;
+	cout << "Original:" << endl;
+	cout << to_hex(testdata) << endl;
+	
+	bytes mystery = mystery_encryptor_11(testdata);
+	cout << "Modified:" << endl;
+	cout << to_hex(mystery) << endl;
 	return 0;
 }

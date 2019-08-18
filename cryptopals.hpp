@@ -22,4 +22,8 @@ void decrypt(bytes &enc, bytes &key);
 void cbc_decrypt(bytes &enc, bytes &key, bytes &iv);
 
 void encrypt(bytes &enc, bytes &key);
+
+void cbc_encrypt(bytes &enc, bytes &key, bytes &iv);
+
+bytes mystery_encryptor_11(bytes &enc);
 #endif

@@ -1,6 +1,7 @@
 #include <stdexcept>
 #include <unordered_map>
 #include <iostream>
+#include <cstdlib>
 #include "conversions.hpp"
 #include "bytevector.hpp"
 #include "byteview.hpp"
@@ -307,11 +308,12 @@ void decrypt(bytes &enc, bytes &key) {
 
 void cbc_decrypt(bytes &enc, bytes &key, bytes &iv) {
 	auto tmp = to_bytes(nsample(enc, 0, 1, enc.size()-16));
-	iv.insert(iv.end(), tmp.begin(), tmp.end()); //Copy ciphertext after IV
+	auto mask = iv;
+	mask.insert(mask.end(), tmp.begin(), tmp.end()); //Copy ciphertext after IV
 	
 	decrypt(enc, key);
 	
-	enc = enc ^ iv;
+	enc = enc ^ mask;
 }
 
 
@@ -430,9 +432,56 @@ void encrypt(bytes &enc, bytes &key) {
 	for (auto &b : blocks) {
 		if (b.size() != 16) {
 			cout << "Skipping last non-full block" << endl;
+			break;
 		}
 		encrypt128(b, ks);
 	}
 	
 	return;
+}
+
+
+void cbc_encrypt(bytes &enc, bytes &key, bytes &iv) {
+	bytes ks = keyschedule(key);
+	auto blocks = inBlocks(enc, 16);
+	
+	bytes last = iv;
+	
+	for (auto &b : blocks) {
+		if (b.size() != 16) {
+			cout << "Skipping last non-full block" << endl;
+			break;
+		}
+		
+		bytes tmp = last ^ b;
+		encrypt128(tmp, ks);
+		last = tmp;
+		
+		for (int i = 0; i < 16; i++) b[i] = tmp[i]; //Good enough
+	}
+	
+	return;
+}
+
+bytes mystery_encryptor_11(bytes &enc) {
+	bytes key = mk_rand_bytes(16);
+	bytes ret = mk_rand_bytes((rand() % 6) + 5);
+	bytes append = mk_rand_bytes((rand() % 6) + 5);
+	add_to(ret, enc);
+	add_to(ret, append);
+	
+	pad_to_mult(ret, 16);
+	
+	if (rand() & 1) {
+		//ECB
+		cout << "ECB" << endl;
+		encrypt(ret, key);
+	} else {
+		//CBC
+		cout << "CBC" << endl;
+		bytes iv = mk_rand_bytes(16);
+		cbc_encrypt(ret, key, iv);
+	}
+	
+	return ret;
 }

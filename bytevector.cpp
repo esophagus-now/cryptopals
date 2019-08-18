@@ -1,6 +1,7 @@
 #include "bytevector.hpp"
 #include "byteview.hpp"
 #include "conversions.hpp"
+#include <cstdlib>
 #include <vector>
 #include <string>
 #include <sstream>
@@ -105,6 +106,17 @@ bytevec to_bytes(byteview bv) {
 	return bytevec(bv.begin(), bv.end());
 }
 
+bytevec mk_rand_bytes(int num) {
+	bytevec ret;
+	ret.reserve(num);
+	
+	for (int i = 0; i < num; i++) {
+		ret.push_back(rand()); //Should auto-truncate to char?
+	}
+	
+	return ret;
+}
+
 ///Pretty-printing
 //Results in an unnecessary copy, but that's OK
 string to_string(bytevec const& bv) {
@@ -182,4 +194,11 @@ vector<byteview> inBlocks(bytevec & bv, int bsize) {
 	}
 	
 	return ret;
+}
+
+void pad_to_mult(bytevec &bv, int sz) {
+	int amount_to_pad = (sz - (bv.size()%sz));
+	if (amount_to_pad == sz) return;
+	bytevec append(amount_to_pad, 0x04);
+	add_to(bv, append);
 }
