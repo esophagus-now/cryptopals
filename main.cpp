@@ -157,5 +157,24 @@ int main() {
 	
 	cout << to_string(enc) << endl;
 	
+	cout << "Test of AES encrypter" << endl;
+	auto testdata = to_bytes(
+		"YELLOW SUBMARINE"
+		"YELLOW SUBMARINE"
+		"YELLOW SUBMARINE"
+		"YELLOW SUBMARINE"
+		"YELLOW SUBMARINE"
+		"YELLOW SUBMARINE"
+		"YELLOW SUBMARINE"
+		"YELLOW SUBMARINE", 
+		bvec::ASCII
+	);
+	
+	key = to_bytes("SOUS-MARIN JAUNE", bvec::ASCII);
+	encrypt(testdata, key);
+	decrypt(testdata, key);
+	
+	cout << to_string(testdata) << endl;
+	
 	return 0;
 }

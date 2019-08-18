@@ -313,3 +313,126 @@ void cbc_decrypt(bytes &enc, bytes &key, bytes &iv) {
 	
 	enc = enc ^ iv;
 }
+
+
+static void encrypt128(byteview ctxt, bytes &keysched) {
+	//Add key 0
+	for (int i = 0; i < 16; i++) {
+		ctxt[i] ^= keysched[i];
+	}
+	
+	for (int i = 1; i < 10; i++) {
+		//SubBytes
+		for (auto &a : ctxt) {
+			a = sbox[a];
+		}
+		
+		//ShiftRows
+		//COLUMN-MAJOR ORDERING! Oops!
+		/* [ 0  4  8 12
+		 *   1  5  9 13
+		 *   2  6 10 14
+		 *   3  7 11 15]
+		 * */
+		unsigned char tmp = ctxt[15];
+		ctxt[15] = ctxt[11];
+		ctxt[11] = ctxt[7];
+		ctxt[7] = ctxt[3];
+		ctxt[3] = tmp;
+		
+		tmp = ctxt[2];
+		ctxt[2] = ctxt[10];
+		ctxt[10] = tmp;
+		tmp = ctxt[6];
+		ctxt[6] = ctxt[14];
+		ctxt[14] = tmp;
+		
+		tmp = ctxt[1];
+		ctxt[1] = ctxt[5];
+		ctxt[5] = ctxt[9];
+		ctxt[9] = ctxt[13];
+		ctxt[13] = tmp;
+		
+		//MixColumns
+		/*[02 03 01 01
+		 * 01 02 03 01
+		 * 01 01 02 03
+		 * 03 01 01 02]
+		 * */
+		 
+		//COLUMN-MAJOR ORDERING! Oops!
+		/* [ 0  4  8 12
+		 *   1  5  9 13
+		 *   2  6 10 14
+		 *   3  7 11 15]
+		 * */
+		 
+		 for (int j = 0; j < 16; j += 4) {
+			 unsigned char tvec[4];
+			 tvec[0] = times2[ctxt[0 + j]] ^ times3[ctxt[1 + j]] ^ ctxt[2 + j] ^ ctxt[3 + j];
+			 tvec[1] = ctxt[0 + j] ^ times2[ctxt[1 + j]] ^ times3[ctxt[2 + j]] ^ ctxt[3 + j];
+			 tvec[2] = ctxt[0 + j] ^ ctxt[1 + j] ^ times2[ctxt[2 + j]] ^ times3[ctxt[3 + j]];
+			 tvec[3] = times3[ctxt[0 + j]] ^ ctxt[1 + j] ^ ctxt[2 + j] ^ times2[ctxt[3 + j]];
+			 ctxt[0 + j] = tvec[0];
+			 ctxt[1 + j] = tvec[1];
+			 ctxt[2 + j] = tvec[2];
+			 ctxt[3 + j] = tvec[3];
+		 }
+		
+		//Add round key
+		for (int j = 0; j < 16; j++) {
+			ctxt[j] ^= keysched[i*16 + j];
+		}
+	}
+	
+	//SubBytes
+	for (auto &a : ctxt) {
+		a = sbox[a];
+	}
+	
+	//ShiftRows
+	//COLUMN-MAJOR ORDERING! Oops!
+	/* [ 0  4  8 12
+	 *   1  5  9 13
+	 *   2  6 10 14
+	 *   3  7 11 15]
+	 * */
+	unsigned char tmp = ctxt[15];
+	ctxt[15] = ctxt[11];
+	ctxt[11] = ctxt[7];
+	ctxt[7] = ctxt[3];
+	ctxt[3] = tmp;
+	
+	tmp = ctxt[2];
+	ctxt[2] = ctxt[10];
+	ctxt[10] = tmp;
+	tmp = ctxt[6];
+	ctxt[6] = ctxt[14];
+	ctxt[14] = tmp;
+	
+	tmp = ctxt[1];
+	ctxt[1] = ctxt[5];
+	ctxt[5] = ctxt[9];
+	ctxt[9] = ctxt[13];
+	ctxt[13] = tmp;
+	
+	//Add key 11
+	for (int i = 0; i < 16; i++) {
+		ctxt[i] ^= keysched[10*16 + i];
+	}
+	return;
+}
+
+void encrypt(bytes &enc, bytes &key) {
+	bytes ks = keyschedule(key);
+	auto blocks = inBlocks(enc, 16);
+	
+	for (auto &b : blocks) {
+		if (b.size() != 16) {
+			cout << "Skipping last non-full block" << endl;
+		}
+		encrypt128(b, ks);
+	}
+	
+	return;
+}
